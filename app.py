@@ -25,75 +25,20 @@ from models import *
 
 Base.metadata.create_all(bind=engine)
 
-@app.route('/tutorials', methods=['GET'])
+@app.route('/info', methods=['GET'])
 @jwt_required()
-def get_list():
+def get_info():
     user_id = get_jwt_identity()
-    videos = Video.query.filter(Video.user_id == user_id)
-    serialized = []
-    for video in videos:
-        serialized.append({
-            'id': video.id,
-            'name': video.name,
-            'description': video.description
-        })
-    return jsonify(serialized)
+    wallet = User.query.filter(User.id == user_id)
 
+    if wallet[0].wallet <= 0 :
+        return jsonify({'error': 'Your wallet is empty'})
+        
+    else :
+        wallet[0].wallet = wallet[0].wallet - 1
+        session.commit()
 
-@app.route('/tutorials', methods=['POST'])
-@jwt_required()
-def update_list():
-    user_id = get_jwt_identity()
-    new_one = Video(user_id=user_id, **request.json)
-    session.add(new_one)
-    session.commit()
-    serialized = {
-        'id': new_one.id,
-        'user_id': new_one.user_id,
-        'name': new_one.name,
-        'description': new_one.description
-    }
-    return jsonify(serialized)
-
-
-@app.route('/tutorials/<int:tutorial_id>', methods=['PUT'])
-@jwt_required()
-def update_tutorial(tutorial_id):
-    user_id = get_jwt_identity()
-    item = Video.query.filter(
-        Video.id == tutorial_id,
-        Video.user_id == user_id
-        ).first()
-    params = request.json
-    if not item:
-        return {'message': 'No tutorials with this id'}, 400
-    for key, value in params.items():
-        setattr(item, key, value)
-    session.commit()
-    serialized = {
-            'id': item.id,
-            'user_id': item.user_id,
-            'name': item.name,
-            'description': item.description
-        }
-    return jsonify(serialized)
-
-
-@app.route('/tutorials/<int:tutorial_id>', methods=['DELETE'])
-@jwt_required()
-def delete_tutorial(tutorial_id):
-    user_id = get_jwt_identity()
-    item = Video.query.filter(
-        Video.id == tutorial_id,
-        Video.user_id == user_id
-        ).first()
-    params = request.json
-    if not item:
-        return {'message': 'No tutorials with this id'}, 400
-    session.delete(item)
-    session.commit()
-    return '', 204
-
+        return jsonify({'wallet': wallet[0].wallet})
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -104,15 +49,13 @@ def register():
     token = user.get_token()
     return {'access_token': token}
 
-
-@app.route('/login', methods=['POST'])
-def login():
+@app.route('/auth', methods=['POST'])
+def auth():
     params = request.json
     user = User.authenticate(**params)
     token = user.get_token()
     return {'access_token': token}
     
-
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     session.remove()
