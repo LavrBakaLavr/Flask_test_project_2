@@ -4,8 +4,22 @@ from videoblog.schemas import VideoSchema
 from flask_apispec import use_kwargs, marshal_with
 from videoblog.models import Video
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from videoblog.base_view import BaseView
 
 videos = Blueprint('videos', __name__)
+
+
+class ListView(BaseView):
+    @marshal_with(VideoSchema(many=True))
+    def get(self):
+        try:
+            videos = Video.get_list()
+        except Exception as e:
+            logger.warning(
+                f'tutorials - read action failed with errors: {e}')
+            return {'message': str(e)}, 400
+        return videos
+
 
 @videos.route('/tutorials', methods=['GET'])
 @jwt_required()
@@ -83,3 +97,5 @@ docs.register(get_list, blueprint='videos')
 docs.register(update_list, blueprint='videos')
 docs.register(update_tutorial, blueprint='videos')
 docs.register(delete_tutorial, blueprint='videos')
+
+ListView.register(videos, docs, '/main', 'listview')
